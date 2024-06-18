@@ -25,12 +25,16 @@
             <td>{{ book.num_ratings }}</td>
             <td>
                 {% if current_user.is_authenticated %}
+                    <a class="btn btn-info" href="{{ url_for('view_book', book_id=book.book_id) }}">Просмотр</a>
                     {% if current_user.has_permission('edit_book') %}
                         <a class="btn btn-primary" href="{{ url_for('edit_book', book_id=book.book_id) }}">Редактировать</a>
                     {% endif %}
+                    {% if current_user.has_permission('delete') %}
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal"
+                                data-delete-url="{{ url_for('delete_book', book_id=book.book_id) }}">Удалить</button>
+                    {% endif %}
                 {% endif %}
             </td>
-            
             
         </tr>
         {% endfor %}
@@ -43,4 +47,25 @@
         <p>Создание: нет прав</p>
     {% endif %}
 {% endif %}
+<div class="modal" id="delete-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтвердите удаление книги</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить эту книгу?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Нет</button>
+                <form action="" method="post">
+                    <button type="submit" class="btn btn-danger">Да</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='delete_user.js') }}" ></script>
 {% endblock %}

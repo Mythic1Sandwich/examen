@@ -1,10 +1,11 @@
 {% macro book_form(action='create', book=None, genres=None, existing_genres=None) %}
-<form method="post">
+<form method="post" enctype="multipart/form-data">
     {% if action=='create' %}
-    <div class="mb-3">
-        <label class="form-label" for="cover">Обложка</label>
-        <input class="form-control" type="number" id="cover" name="cover">
-    </div>
+    
+        <div class="mb-3">
+            <label class="form-label" for="cover">Обложка</label>
+            <input class="form-control" type="file" id="cover" name="cover">
+        </div>
     {% endif %}
     <div class="mb-3">
         <label class="form-label" for="book_name">Название книги</label>
@@ -39,12 +40,10 @@
         <input class="form-control" type="number" id="volume" name="volume" value="{{ book.volume or '' }}" required>
     </div>
     <button class="btn btn-primary">Сохранить</button>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+
 </form>
 
 
 {% endmacro %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
-<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
-<script>
-    var easyMDE = new EasyMDE({ element: document.getElementById('book_descr') });
-</script>

@@ -7,7 +7,8 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, curren
 from mysqldb import DBConnector
 from mysql.connector.errors import DatabaseError
 from functools import wraps
-from valid import validate_login, validate_password, validate_name, validate_surname
+import markdown # type: ignore
+from bleach import clean # type: ignore
 from utils import check_rights
 
 CREATE_BOOK_FIELDS = ['book_name', 'book_descr', 'releaser', 'publisher', 'author', 'volume']
@@ -25,7 +26,7 @@ db_connector = DBConnector(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "auth"
-login_manager.login_message = "Войдите, чтобы просматривать содержимое данной страницы"
+login_manager.login_message = "Для выполнения данного действия необходимо пройти процедуру аутентификации"
 login_manager.login_message_category = "warning"
 
 class User(UserMixin):
@@ -147,6 +148,14 @@ def books():
         print(data) 
     return render_template("books.html", books=data)
 
+from hashlib import md5
+import os
+from werkzeug.utils import secure_filename
+
+UPLOAD_FOLDER = 'C:/Users/zarin/Downloads' 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'} 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/books/new', methods=['GET', 'POST'])
 @login_required
@@ -154,45 +163,78 @@ def books():
 def create_book():
     genres = get_genre_name()
     book = {}
-    
+
     if request.method == 'POST':
         book = get_form_data(CREATE_BOOK_FIELDS)
-        selected_genres = request.form.getlist('genres')  
-        
+        selected_genres = request.form.getlist('genres')
+
+        if 'cover' in request.files:
+            cover_file = request.files['cover']
+            if cover_file.filename == '':
+                flash('No selected file', 'danger')
+                return redirect(request.url)
+            if cover_file and allowed_file(cover_file.filename):
+                filename = secure_filename(cover_file.filename)
+                cover_path = os.path.join(UPLOAD_FOLDER, filename)
+                cover_file.save(cover_path)
+
+                with open(cover_path, 'rb') as f:
+                    content = f.read()
+                    md5_hash = md5(content).hexdigest()
+
+                query = "SELECT cover_id FROM covers WHERE md5_hash = %s"
+                with db_connector.connect().cursor(named_tuple=True) as cursor:
+                    cursor.execute(query, (md5_hash,))
+                    existing_cover = cursor.fetchone()
+
+                if existing_cover:
+                    cover_id = existing_cover.cover_id
+                else:
+               
+                    insert_cover_query = "INSERT INTO covers (md5_hash, cover_name, mime_type) VALUES (%s, %s, %s)"
+                    cover_name = "32"
+                    mime_type = cover_file.mimetype
+                    with db_connector.connect().cursor() as cursor:
+                        cursor.execute(insert_cover_query, (md5_hash, cover_name, mime_type))
+                        cover_id = cursor.lastrowid
+
+                book['cover_id'] = cover_id
+
         insert_book_query = ("INSERT INTO books "
                              "(book_id, book_name, book_descr, releaser, publisher, author, volume) "
                              "VALUES (%(book_id)s, %(book_name)s, %(book_descr)s, "
                              "%(releaser)s, %(publisher)s, %(author)s, %(volume)s)")
-        
+
         get_max_book_id_query = "SELECT MAX(book_id) + 1 AS next_book_id FROM books"
-        
+
         try:
             with db_connector.connect() as connection:
                 with connection.cursor(dictionary=True) as cursor:
                     cursor.execute(get_max_book_id_query)
                     next_book_id = cursor.fetchone()['next_book_id']
-                    
+
                     book['book_id'] = next_book_id
                     cursor.execute(insert_book_query, book)
                     connection.commit()
-                    
+
                     if selected_genres:
                         existing_genre_ids = [genre['genre_id'] for genre in genres]
                         selected_genres = [int(genre_id) for genre_id in selected_genres if int(genre_id) in existing_genre_ids]
-                        
+
                         if selected_genres:
                             insert_genre_query = "INSERT INTO book_genre (book_id, genre_id) VALUES (%s, %s)"
                             cursor.executemany(insert_genre_query, [(next_book_id, genre_id) for genre_id in selected_genres])
                             connection.commit()
-                    
+
             flash("Книга успешно создана", category="success")
             return redirect(url_for('books'))
-        
+
         except DatabaseError as error:
             flash(f'Ошибка создания книги: {error}', category="danger")
             db_connector.connect().rollback()
-    
+
     return render_template("book_form.html", book=book, genres=genres)
+
 @app.route('/books/<int:book_id>/edit', methods=['GET', 'POST'])
 @login_required
 @check_rights('edit_book')
@@ -241,7 +283,6 @@ def edit_book(book_id):
             INSERT INTO book_genre (book_id, genre_id) VALUES (%s, %s)
             ON DUPLICATE KEY UPDATE book_id = VALUES(book_id), genre_id = VALUES(genre_id)
         """
-        delete_genre_query = "DELETE FROM book_genre WHERE book_id = %s AND genre_id = %s"
 
         try:
             with db_connector.connect() as connection:
@@ -350,7 +391,29 @@ def delete_user(user_id):
     except DatabaseError as error:
         flash(f'Ошибка удаления пользователя! {error}', category="danger")
         db_connector.connect().rollback()    
+        
     return redirect(url_for('users'))
+
+
+
+@app.route('/books/<int:book_id>/delete', methods=["POST"])
+@login_required
+@check_rights('delete')
+def delete_book(book_id):
+    query1 = "DELETE FROM books WHERE book_id=%s"
+    if not current_user.has_permission('delete'):
+        flash('У вас недостаточно прав для удаления.', 'warning')
+        return redirect(url_for('index'))
+    try:
+        with db_connector.connect().cursor(named_tuple=True) as cursor:
+            cursor.execute(query1, (book_id, ))
+            db_connector.connect().commit() 
+        flash("Книга успешно удалена", category="success")
+    except DatabaseError as error:
+        flash(f'Ошибка удаления книги! {error}', category="danger")
+        db_connector.connect().rollback()    
+        
+    return redirect(url_for('books'))
 
 @app.route('/users/new', methods=['GET', 'POST'])
 def create_user():
@@ -374,6 +437,171 @@ def create_user():
             flash(f'Ошибка создания пользователя: {error}', category="danger")    
             db_connector.connect().rollback()
     return render_template("user_form.html", user=user, roles=roles)
+
+
+
+@app.route('/books/<int:book_id>/review', methods=['GET', 'POST'])
+@login_required
+def create_review(book_id):
+    user_id = current_user.id
+ 
+    check_review_query = """
+        SELECT review_id 
+        FROM reviews 
+        WHERE book_id = %s AND user_id = %s
+    """
+    with db_connector.connect().cursor(named_tuple=True) as cursor:
+        cursor.execute(check_review_query, (book_id, user_id))
+        existing_review = cursor.fetchone()
+    
+    if existing_review:
+        flash("Вы уже написали рецензию на эту книгу", category="warning")
+        return redirect(url_for('view_book', book_id=book_id))
+
+    if request.method == 'POST':
+        review = {
+            'book_id': book_id,
+            'user_id': user_id,
+            'rate': request.form.get('rate'),
+            'description': markdown.markdown(request.form.get('description')),
+        }
+
+        insert_review_query = """
+            INSERT INTO reviews (review_id, book_id, user_id, rate, description)
+            VALUES (%(review_id)s, %(book_id)s, %(user_id)s, %(rate)s, %(description)s)
+        """
+        get_max_review_id_query = "SELECT COALESCE(MAX(review_id) + 1, 1) AS next_review_id FROM reviews"
+        try:
+            with db_connector.connect() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute(get_max_review_id_query)
+                    next_review_id = cursor.fetchone()['next_review_id']
+                    print(next_review_id)
+                    
+                    review['review_id'] = next_review_id
+                    cursor.execute(insert_review_query, review)
+                connection.commit()
+            flash("Рецензия успешно добавлена", category="success")
+            return redirect(url_for('view_book', book_id=book_id))
+        except DatabaseError as error:
+            flash(f'Ошибка сохранения рецензии: {error}', category="danger")
+    
+    return render_template('review_form.html', book_id=book_id)
+
+
+@app.route('/books/<int:book_id>/view')
+@login_required
+@check_rights('view')
+def view_book(book_id):
+    query_book = """
+        SELECT book_id, book_name, book_descr, releaser, publisher, author, volume
+        FROM books WHERE book_id = %s
+    """
+    query_reviews = """
+        SELECT reviews.review_id, reviews.rate, reviews.description, reviews.add_date, users.login, reviews.user_id
+        FROM reviews
+        JOIN users ON reviews.user_id = users.user_id
+        WHERE reviews.book_id = %s
+        ORDER BY reviews.add_date DESC
+    """
+    user_review_query = """
+        SELECT review_id, rate, description, add_date
+        FROM reviews
+        WHERE book_id = %s AND user_id = %s
+    """
+
+    with db_connector.connect().cursor(dictionary=True) as cursor:
+        try:
+            cursor.execute(query_book, (book_id,))
+            book = cursor.fetchone()
+            if not book:
+                flash(f'Книга с ID {book_id} не найдена', category="danger")
+                return redirect(url_for('books'))
+
+            cursor.execute(query_reviews, (book_id,))
+            reviews = cursor.fetchall()
+            
+            cursor.execute(user_review_query, (book_id, current_user.id))
+            user_review = cursor.fetchone()
+            print(user_review)
+            
+            book['book_descr'] = markdown.markdown(book['book_descr'])
+            for review in reviews:
+                review['description'] = markdown.markdown(review['description'])
+                review['edit_allowed'] = current_user.id == review['user_id']
+
+        except DatabaseError as error:
+            flash(f'Ошибка при выполнении запроса к базе данных: {error}', category="danger")
+            return redirect(url_for('books'))
+        
+    return render_template('view_book.html', book=book, reviews=reviews, user_review=user_review)
+
+
+@app.route('/books/<int:book_id>/review/edit', methods=['GET', 'POST'])
+@login_required
+def edit_review(book_id):
+    user_id = current_user.id
+
+    query = """
+        SELECT review_id, rate, description
+        FROM reviews
+        WHERE book_id = %s AND user_id = %s
+    """
+
+    with db_connector.connect().cursor(named_tuple=True) as cursor:
+        cursor.execute(query, (book_id, user_id))
+        review = cursor.fetchone()
+
+    if not review:
+        flash("Рецензия не найдена", category="warning")
+        return redirect(url_for('view_book', book_id=book_id))
+
+    if request.method == 'POST':
+        updated_review = {
+            'review_id': review.review_id,
+            'rate': request.form.get('rate'),
+            'description': markdown.markdown(request.form.get('description'))
+        }
+
+        update_review_query = """
+            UPDATE reviews
+            SET rate = %(rate)s, description = %(description)s
+            WHERE review_id = %(review_id)s
+        """
+        
+        try:
+            with db_connector.connect() as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(update_review_query, updated_review)
+                connection.commit()
+            flash("Рецензия успешно обновлена", category="success")
+            return redirect(url_for('view_book', book_id=book_id))
+        except DatabaseError as error:
+            flash(f'Ошибка обновления рецензии: {error}', category="danger")
+    
+    return render_template('review_edit_form.html', review=review, book_id=book_id)
+
+
+@app.route('/books/<int:book_id>/review/delete', methods=['POST'])
+@login_required
+def delete_review(book_id):
+    user_id = current_user.id
+
+    delete_review_query = """
+        DELETE FROM reviews
+        WHERE book_id = %s AND user_id = %s
+    """
+
+    try:
+        with db_connector.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(delete_review_query, (book_id, user_id))
+            connection.commit()
+        flash("Рецензия успешно удалена", category="success")
+    except DatabaseError as error:
+        flash(f'Ошибка удаления рецензии: {error}', category="danger")
+    
+    return redirect(url_for('view_book', book_id=book_id))
 
 
 
