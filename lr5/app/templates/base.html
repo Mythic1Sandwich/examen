@@ -21,7 +21,7 @@
     <header>
         <nav class="navbar navbar-expand-lg bg-body-tertiary">
             <div class="container-fluid">
-                <a class="navbar-brand" href="{{ url_for('index') }}">Абдулаева К.Д 221-3210</a>
+                <a class="navbar-brand" href="{{ url_for('index') }}">Лабораторная работа № 4</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                     data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
                     aria-expanded="false" aria-label="Toggle navigation">
@@ -32,17 +32,31 @@
                         <li class="nav-item">
                             <a class="nav-link active" aria-current="page" href="{{ url_for('info') }}">Счётчик</a>
                         </li>
-                    
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page"
+                                href="{{ url_for('auth') }}">Авторизоваться</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="{{ url_for('user_actions.index') }}">Действия пользователей</a>
+                        </li>
+                        {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            
+                            <a class="nav-link active" aria-current="page" href="{{ url_for('change_password', user_id=current_user.id) }}">Изменить пароль</a>
+                            {% endif %}
                         </li>
                         <li class="nav-item">
                             <a class="nav-link active" aria-current="page"
                                 href="{{ url_for('users') }}">Пользователи</a>
-                                <a class="nav-link active" aria-current="page"
-                                href="{{ url_for('books') }}">КНИГИ</a>
                         </li>
+                        {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="{{ url_for('secret') }}">Закрытая
+                                страница</a>
+                        </li>
+                        {% endif %}
                         <li class="nav-item">
                             {% if current_user.is_authenticated %}
-                          
                             <a class="nav-link active" aria-current="page" href="{{ url_for('logout') }}">Выйти</a>
                             {% else %}
                             <a class="nav-link active" aria-current="page" href="{{ url_for('auth') }}">Войти</a>

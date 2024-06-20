@@ -1,0 +1,38 @@
+{% extends 'user_actions/base.html' %}
+
+{% from 'user_actions/pagination.html' import pagination %}
+
+{% block user_actions_content %}
+<h1> Журнал действий пользователей </h1>
+<table class="table">
+    <thead>
+        <tr>
+            <th> № </th>
+            <th> name </th>
+            <th> last_name </th>
+            <th> surname </th>
+            <th> path </th>
+            <th> created_at </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for action in user_actions %}
+        <tr>
+            <td> {{loop.index}} </td>
+            {% if action.name is not none %}
+            <td>  {{action.last_name}} </td>
+            <td> {{action.surname}} </td>
+            {% else %}
+            <td> Неаутентифицированный </td>
+            <td> пользователь </td>
+            {% endif %}
+            <td> {% if action.surname %} {{action.surname}} {% endif %}</td>
+            <td> {{action.path}} </td>
+            <td> {{action.created_at}} </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    
+</table>
+{{ pagination(request.endpoint, page, page_count, pages) }}
+{% endblock %}

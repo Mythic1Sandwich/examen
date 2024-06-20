@@ -3,19 +3,42 @@
     {% if action=='create' %}
     <div class="mb-3">
         <label class="form-label" for="login">Логин</label>
-        <input class="form-control" type="text" id="login" name="login" value="{{ user.login or '' }}" required>
+        <input class="form-control {% if errors.get('login') %}is-invalid{% endif %}" type="text" id="login" name="login" value="{{ user.login or '' }}" required>
+        {% if errors.get('login') %}
+        <div class="invalid-feedback">
+            {{ errors['login'] }}
+        </div>
+        {% endif %}
     </div>
     <div class="mb-3">
         <label class="form-label" for="password">Пароль</label>
-        <input class="form-control"  type="text" id="password" name="password" value="{{ user.password or '' }}" required>
+        <input class="form-control {% if errors.password %}is-invalid{% endif %}" type="text" id="password" name="password" value="{{ user.password or '' }}" required>
+        {% if errors.password %}
+        <div class="invalid-feedback">
+            {{ errors.password }}
+        </div>
+        {% endif %}
     </div>
     
    
     
     {% endif %}
+    {% if action=='watch' %}
+    <div class="mb-3">
+        <label class="form-label" for="login">Логин</label>
+        <input class="form-control" type="text" id="login" name="login" value="{{ user.login or '' }}" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="id">Идентификатор </label>
+        <input class="form-control" type="text" id="id" name="id" value="{{ user.user_id}}" required>
+    </div>
+    {% endif %}
     <div class="mb-3">
         <label class="form-label" for="name">Имя</label>
-        <input class="form-control" type="text" id="name" name="name" value="{{ user.name or '' }}" required>
+        <input class="form-control {% if errors.name %}is-invalid{% endif %}" type="text" id="name" name="name" value="{{ user.name or '' }}" required>
+        <div class="invalid-feedback">
+            {{ errors.name }}
+        </div>
     </div>
     <div class="mb-3">
         <label class="form-label" for="last_name">Фамилия</label>
@@ -23,7 +46,12 @@
     </div>
     <div class="mb-3">
         <label class="form-label" for="surname">Отчество</label>
-        <input class="form-control" type="text" id="surname" name="surname" value="{{ user.surname or '' }}" required>
+        <input class="form-control {% if errors.surname %}is-invalid{% endif %}" type="text" id="surname" name="surname" value="{{ user.surname or '' }}" required>
+        {% if errors.surname %}
+        <div class="invalid-feedback">
+            {{ errors.surname }}
+        </div>
+        {% endif %}
     </div>
     <div class="mb-3">
         <label class="form-label" for="role">Роль</label>

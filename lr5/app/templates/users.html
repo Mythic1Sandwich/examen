@@ -24,6 +24,16 @@
             <td>{{ user.surname or '' }}</td>
             <td>{{ user.role_name or 'Нет роли' }}</td>
             <td>
+                {% if user.user_id == current_user.id or current_user.has_permission('view') %}
+                    <a class="btn btn-primary" href="{{ url_for('seek', user_id=user.user_id) }}">Просмотр</a>
+                {% endif %}
+                {% if user.user_id == current_user.id or current_user.has_permission('edit') %}
+                    <a class="btn btn-primary" href="{{ url_for('edit_user', user_id=user.user_id) }}">Редактировать</a>
+                {% endif %}
+                {% if current_user.has_permission('delete') %}
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal"
+                            data-delete-url="{{ url_for('delete_user', user_id=user.user_id) }}">Удалить</button>
+                {% endif %}
             </td>
             
         </tr>
