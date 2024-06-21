@@ -1,8 +1,0 @@
-{% extends 'base.html' %}
-
-{% from 'book_macros.html' import book_form %}
-
-{% block content %}
-<h2>Редактирование книги</h2>
-{{ book_form(action='edit', book=book, genres=genres, existing_genres=existing_genres) }}
-{% endblock %}

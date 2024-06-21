@@ -1,0 +1,27 @@
+{% extends 'user_actions/base.html' %}
+
+{% block user_actions_content %}
+
+<h1> Статистика посещений </h1>
+<table class="table">
+    <thead>
+        <tr>
+            <th> № </th>
+            <th> СТРАНИЦА</th>
+            
+            <th> КОЛИЧЕСТВО ПОСЕЩЕНИЙ </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for action in user_actions %}
+        <tr>
+            <td> {{loop.index}} </td>
+            <td> {{action.path}} </td>
+            <td> {{action.entries_counter}} </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <a class="btn btn-primary" href="{{ url_for('user_actions.user_export') }}">Экспорт</a>
+</table>
+
+{% endblock %}
