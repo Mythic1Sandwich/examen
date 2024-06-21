@@ -17,7 +17,7 @@
     <tbody>
       {% for book in books %}
         <tr>
-          <td>{{ page - 1 * per_page + loop.index }}</td>
+          <td>{{ (page - 1) * per_page + loop.index }}</td>
           <td>{{ book.book_name }}</td>
           <td>{{ book.all_genres }}</td>
           <td>{{ book.releaser }}</td>
