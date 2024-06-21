@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Написать рецензию</h2>
+<form action="{{ url_for('create_review', book_id=book_id) }}" id='form1' method="post">
+    <div class="mb-3">
+        <label for="rate" class="form-label">Оценка</label>
+        <select name="rate" id="rate" class="form-select" required>
+            <option value="5">отлично</option>
+            <option value="4">хорошо</option>
+            <option value="3">удовлетворительно</option>
+            <option value="2">неудовлетворительно</option>
+            <option value="1">плохо</option>
+            <option value="0">ужасно</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="description" class="form-label">Текст рецензии</label>
+        <textarea name="description" id="description" class="form-control" rows="5"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+    <script defer>
+        document.addEventListener('DOMContentLoaded', function() {
+            var editorElement = document.getElementById("description");
+            if (editorElement) {
+                var editor = new EasyMDE({
+                    element: editorElement,
+                });
+
+                document.getElementById('form1').addEventListener('submit', function() {
+                    editor.toTextArea();
+                });
+            } else {
+                console.error('Element with id "description" not found.');
+            }
+        });
+    </script>
+</form>
+{% endblock %}
